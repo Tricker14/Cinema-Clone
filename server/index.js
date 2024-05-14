@@ -3,8 +3,9 @@ const express = require("express");
 const cors = require("cors");
 const db = require("./models");
 const app = express();
-const userRoutes = require("./routes/userRoutes");
 const cookieParser = require("cookie-parser");
+
+const userRoutes = require("./routes/userRoutes");
 
 const corsOptions = {
     origin: 'http://localhost:5173',
@@ -14,6 +15,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+
+app.use("/", userRoutes);
 
 db.sequelize.sync().then(function(){
     app.listen(3000, function(){
