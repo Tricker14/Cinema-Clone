@@ -5,6 +5,7 @@ import com.example.server.dto.LoginDTO;
 import com.example.server.dto.RegisterDTO;
 import com.example.server.entity.CinemaUser;
 import com.example.server.entity.Role;
+import com.example.server.exception.UserNotFoundException;
 import com.example.server.repository.RoleRepository;
 import com.example.server.repository.UserRepository;
 import com.example.server.security.JwtGenerator;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -44,14 +46,19 @@ public class AuthController {
 
     @PostMapping("login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginDTO loginDTO){
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginDTO.getUsername(),
-                        loginDTO.getPassword()
-                ));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String token = jwtGenerator.generateToken(authentication);
-        return new ResponseEntity<>(new AuthResponseDTO(token), HttpStatus.OK);
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginDTO.getUsername(),
+                            loginDTO.getPassword()
+                    ));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String token = jwtGenerator.generateToken(authentication);
+            return new ResponseEntity<>(new AuthResponseDTO(token), HttpStatus.OK);
+        }
+        catch(BadCredentialsException ex) {
+            throw new UserNotFoundException("Invalid username or password");
+        }
     }
 
     @PostMapping("register")
