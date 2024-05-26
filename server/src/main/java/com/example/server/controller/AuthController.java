@@ -54,7 +54,8 @@ public class AuthController {
                     ));
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String token = jwtGenerator.generateToken(authentication);
-            return new ResponseEntity<>(new AuthResponseDTO(token), HttpStatus.OK);
+            String username = loginDTO.getUsername();
+            return new ResponseEntity<>(new AuthResponseDTO(token, username), HttpStatus.OK);
         }
         catch(BadCredentialsException ex) {
             throw new UserNotFoundException("Invalid username or password");
@@ -63,18 +64,23 @@ public class AuthController {
 
     @PostMapping("register")
     public ResponseEntity<String> register(@RequestBody RegisterDTO registerDTO){
-        if(userRepository.existsByUsername(registerDTO.getUsername())){
-            return new ResponseEntity<>("Username is already taken", HttpStatus.BAD_REQUEST);
+        if(!registerDTO.getPassword().equals(registerDTO.getConfirmation())){
+            return new ResponseEntity<>("Password and confirmation must match!", HttpStatus.BAD_REQUEST);
         }
-        CinemaUser user = new CinemaUser();
-        user.setUsername(registerDTO.getUsername());
-        user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
+        else{
+            if(userRepository.existsByUsername(registerDTO.getUsername())){
+                return new ResponseEntity<>("Username is already taken", HttpStatus.BAD_REQUEST);
+            }
+            CinemaUser user = new CinemaUser();
+            user.setUsername(registerDTO.getUsername());
+            user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
 
-        Role roles = roleRepository.findByName("USER").get();
-        user.setRoles(Collections.singletonList(roles));
+            Role roles = roleRepository.findByName("USER").get();
+            user.setRoles(Collections.singletonList(roles));
 
-        userRepository.save(user);
+            userRepository.save(user);
 
-        return new ResponseEntity<>("User registered successfully!", HttpStatus.OK);
+            return new ResponseEntity<>("User registered successfully!", HttpStatus.OK);
+        }
     }
 }
