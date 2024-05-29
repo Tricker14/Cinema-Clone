@@ -3,6 +3,7 @@ package com.example.server.security;
 import com.example.server.entity.CinemaUser;
 import com.example.server.entity.Role;
 import com.example.server.repository.UserRepository;
+import com.example.server.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
