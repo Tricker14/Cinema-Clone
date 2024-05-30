@@ -5,11 +5,11 @@ import com.example.server.entity.VerificationToken;
 import com.example.server.repository.UserRepository;
 import com.example.server.repository.VerificationTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import java.util.Date;
 
 @Service
 public class EmailService {
@@ -46,6 +46,11 @@ public class EmailService {
         javaMailSender.send(mail);
     }
 
+    public boolean isTokenExpired(VerificationToken verificationToken){     // true: expired
+        Date date = new Date();
+        return verificationToken.getExpiryDate().before(date);
+    }
+
     public void sendChangedPasswordNotification(CinemaUser user){
         String emailAddress = user.getEmail();
         String subject = "Password change notification";
@@ -60,7 +65,7 @@ public class EmailService {
 
     public boolean confirmEmail(String token){
         VerificationToken verificationToken = verificationTokenRepository.findByToken(token);
-        if(verificationToken != null){
+        if(verificationToken != null && !isTokenExpired(verificationToken)){
             CinemaUser user = verificationToken.getUser();
             user.setEnabled(true);
             userRepository.save(user);
