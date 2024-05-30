@@ -46,15 +46,27 @@ public class EmailService {
         javaMailSender.send(mail);
     }
 
-    public ResponseEntity<String> confirmEmail(String token){
+    public void sendChangedPasswordNotification(CinemaUser user){
+        String emailAddress = user.getEmail();
+        String subject = "Password change notification";
+        String message = "Your password has been successfully changed!";
+
+        SimpleMailMessage mail = new SimpleMailMessage();
+        mail.setTo(emailAddress);
+        mail.setSubject(subject);
+        mail.setText(message);
+        javaMailSender.send(mail);
+    }
+
+    public boolean confirmEmail(String token){
         VerificationToken verificationToken = verificationTokenRepository.findByToken(token);
         if(verificationToken != null){
             CinemaUser user = verificationToken.getUser();
             user.setEnabled(true);
             userRepository.save(user);
 
-            return new ResponseEntity<>("Email verified successfully!", HttpStatus.OK);
+            return true;
         }
-        return new ResponseEntity<>("Could not verify email!", HttpStatus.BAD_REQUEST);
+        return false;
     }
 }

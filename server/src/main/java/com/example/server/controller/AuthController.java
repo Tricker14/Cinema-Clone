@@ -2,6 +2,7 @@ package com.example.server.controller;
 
 import com.example.server.dto.AuthResponseDTO;
 import com.example.server.dto.LoginDTO;
+import com.example.server.dto.PasswordHandleDTO;
 import com.example.server.dto.RegisterDTO;
 import com.example.server.entity.CinemaUser;
 import com.example.server.service.AuthService;
@@ -10,6 +11,7 @@ import com.example.server.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -61,6 +63,24 @@ public class AuthController {
 
     @GetMapping("email-confirmation")
     public ResponseEntity<String> confirmEmail(@RequestParam("token") String token){
-        return emailService.confirmEmail(token);
+        boolean isConfirmEmail = emailService.confirmEmail(token);
+        if(isConfirmEmail){
+            return new ResponseEntity<>("Email verified successfully!", HttpStatus.OK);
+        }
+        else{
+            return new ResponseEntity<>("Could not verify email!", HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PostMapping("change-password")
+    public ResponseEntity<String> changePassword(@RequestBody PasswordHandleDTO passwordHandleDTO){
+        CinemaUser user = userService.changePassword(passwordHandleDTO);
+        emailService.sendChangedPasswordNotification(user);
+        return new ResponseEntity<String>("You have changed your password!", HttpStatus.OK);
+    }
+
+    @PostMapping("forgot-password")
+    public ResponseEntity<String> forgotPassword(){
+        return null;
     }
 }
