@@ -2,64 +2,39 @@ package com.example.server.controller;
 
 import com.example.server.dto.AuthResponseDTO;
 import com.example.server.dto.LoginDTO;
+import com.example.server.dto.PasswordHandleDTO;
 import com.example.server.dto.RegisterDTO;
 import com.example.server.entity.CinemaUser;
-import com.example.server.entity.Role;
-import com.example.server.exception.UserNotFoundException;
-import com.example.server.repository.RoleRepository;
-import com.example.server.repository.UserRepository;
-import com.example.server.security.JwtGenerator;
+import com.example.server.service.AuthService;
+import com.example.server.service.EmailService;
+import com.example.server.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private AuthenticationManager authenticationManager;
-    private UserRepository userRepository;
-    private RoleRepository roleRepository;
-    private PasswordEncoder passwordEncoder;
-    private JwtGenerator jwtGenerator;
+    private UserService userService;
+    private EmailService emailService;
+    private AuthService authService;
 
     @Autowired
-    public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtGenerator jwtGenerator) {
-        this.authenticationManager = authenticationManager;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtGenerator = jwtGenerator;
+    public AuthController(UserService userService, EmailService emailService, AuthService authService) {
+        this.userService = userService;
+        this.emailService = emailService;
+        this.authService = authService;
     }
 
     @PostMapping("login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginDTO loginDTO){
-        try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            loginDTO.getUsername(),
-                            loginDTO.getPassword()
-                    ));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            String token = jwtGenerator.generateToken(authentication);
-            String username = loginDTO.getUsername();
-            return new ResponseEntity<>(new AuthResponseDTO(token, username), HttpStatus.OK);
-        }
-        catch(BadCredentialsException ex) {
-            throw new UserNotFoundException("Invalid username or password");
-        }
+        AuthResponseDTO authResponseDTO = authService.authResponseDTO(loginDTO);
+        return new ResponseEntity<>(authResponseDTO, HttpStatus.OK);
     }
 
     @PostMapping("register")
@@ -67,20 +42,45 @@ public class AuthController {
         if(!registerDTO.getPassword().equals(registerDTO.getConfirmation())){
             return new ResponseEntity<>("Password and confirmation must match!", HttpStatus.BAD_REQUEST);
         }
-        else{
-            if(userRepository.existsByUsername(registerDTO.getUsername())){
-                return new ResponseEntity<>("Username is already taken", HttpStatus.BAD_REQUEST);
-            }
-            CinemaUser user = new CinemaUser();
-            user.setUsername(registerDTO.getUsername());
-            user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
-
-            Role roles = roleRepository.findByName("USER").get();
-            user.setRoles(Collections.singletonList(roles));
-
-            userRepository.save(user);
-
-            return new ResponseEntity<>("User registered successfully!", HttpStatus.OK);
+        if(userService.existsByUsername(registerDTO.getUsername())){
+            return new ResponseEntity<>("Username is already taken", HttpStatus.BAD_REQUEST);
         }
+        if(userService.existsByEmail(registerDTO.getEmail())){
+            return new ResponseEntity<>("Email is already taken", HttpStatus.BAD_REQUEST);
+        }
+        CinemaUser user =  authService.register(registerDTO);
+
+        // Create verification token
+        String token = UUID.randomUUID().toString();
+        emailService.createVerificationToken(user, token);
+
+        // Send verification email
+        String appUrl = "http://localhost:8080";
+        emailService.sendVerificationEmail(user, token, appUrl);
+
+        return new ResponseEntity<>("User registered successfully!", HttpStatus.OK);
+    }
+
+    @GetMapping("email-confirmation")
+    public ResponseEntity<String> confirmEmail(@RequestParam("token") String token){
+        boolean isConfirmEmail = emailService.confirmEmail(token);
+        if(isConfirmEmail){
+            return new ResponseEntity<>("Email verified successfully!", HttpStatus.OK);
+        }
+        else{
+            return new ResponseEntity<>("Could not verify email!", HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PostMapping("change-password")
+    public ResponseEntity<String> changePassword(@RequestBody PasswordHandleDTO passwordHandleDTO){
+        CinemaUser user = userService.changePassword(passwordHandleDTO);
+        emailService.sendChangedPasswordNotification(user);
+        return new ResponseEntity<String>("You have changed your password!", HttpStatus.OK);
+    }
+
+    @PostMapping("forgot-password")
+    public ResponseEntity<String> forgotPassword(){
+        return null;
     }
 }
