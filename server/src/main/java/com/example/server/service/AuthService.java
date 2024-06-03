@@ -12,6 +12,7 @@ import com.example.server.security.JwtGenerator;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,17 +51,17 @@ public class AuthService {
         return user;
     }
 
-    public AuthResponseDTO authResponseDTO(LoginDTO loginDTO){
+    public AuthResponseDTO login(LoginDTO loginDTO){
+        CinemaUser user = userRepository.findByUsername(loginDTO.getUsername()).orElseThrow(()
+                -> new UserNotFoundException("Username not found!"));
+        if(!user.isEnabled()){
+            throw new UserNotFoundException("Account is not enabled!");
+        }
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginDTO.getUsername(),
                         loginDTO.getPassword()
                 ));
-        CinemaUser user = userRepository.findByUsername(loginDTO.getUsername()).orElseThrow(()
-                -> new UsernameNotFoundException("Username not found"));
-        if(!authentication.isAuthenticated() || !user.isEnabled()){
-            throw new UserNotFoundException("Invalid username or password");
-        }
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = jwtGenerator.generateToken(authentication);
         String username = loginDTO.getUsername();

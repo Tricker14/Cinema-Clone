@@ -9,7 +9,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 @Entity
-@Table(name = "verificationToken")
+@Table(name = "verificationTokens")
 @Data
 @NoArgsConstructor
 public class VerificationToken {

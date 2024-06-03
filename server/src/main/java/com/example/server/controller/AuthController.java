@@ -5,12 +5,14 @@ import com.example.server.dto.LoginDTO;
 import com.example.server.dto.PasswordHandleDTO;
 import com.example.server.dto.RegisterDTO;
 import com.example.server.entity.CinemaUser;
+import com.example.server.exception.UserNotFoundException;
 import com.example.server.service.AuthService;
 import com.example.server.service.EmailService;
 import com.example.server.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,8 +35,13 @@ public class AuthController {
 
     @PostMapping("login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginDTO loginDTO){
-        AuthResponseDTO authResponseDTO = authService.authResponseDTO(loginDTO);
-        return new ResponseEntity<>(authResponseDTO, HttpStatus.OK);
+        try {
+            AuthResponseDTO authResponseDTO = authService.login(loginDTO);
+            return new ResponseEntity<>(authResponseDTO, HttpStatus.OK);
+        }
+        catch(AuthenticationException ex) {
+            throw new UserNotFoundException("Invalid username or password!");
+        }
     }
 
     @PostMapping("register")
